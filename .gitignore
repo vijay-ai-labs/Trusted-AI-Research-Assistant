@@ -1,0 +1,27 @@
+# Environment — NEVER commit real keys
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+node_modules/
+server/dist/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Vite cache
+.vite/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
+
+# Generated review/test artifacts (browser screenshots, temp helpers)
+/*.png
+/extracted.txt
+/extract_text.py
