@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { applyCors } from '../../_lib/cors'
-import { buildSynthesisUserMessage, type SynthesisSource } from '../../_lib/helpers'
+import { applyCors } from '../../_lib/cors.js'
+import { buildSynthesisUserMessage, type SynthesisSource } from '../../_lib/helpers.js'
 import {
   SYNTHESIS_SYSTEM_PROMPT,
   AI_SEARCH_SYSTEM_PROMPT,
@@ -8,7 +8,7 @@ import {
   DEEP_RESEARCH_REPORT_SYSTEM_PROMPT,
   CHAT_PDF_SYSTEM_PROMPT,
   FOLLOWUP_SYSTEM_PROMPT,
-} from '../../_lib/prompts'
+} from '../../_lib/prompts.js'
 
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 

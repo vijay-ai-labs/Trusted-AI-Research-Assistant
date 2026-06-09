@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { applyCors } from '../_lib/cors'
+import { applyCors } from '../_lib/cors.js'
 
 const OPENALEX_BASE = 'https://api.openalex.org'
 const MAILTO = 'aiatozofficial@gmail.com'

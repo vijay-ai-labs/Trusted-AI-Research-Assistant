@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { applyCors } from '../_lib/cors'
-import { PDF_SYSTEM_PROMPT } from '../_lib/prompts'
+import { applyCors } from '../_lib/cors.js'
+import { PDF_SYSTEM_PROMPT } from '../_lib/prompts.js'
 
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 
