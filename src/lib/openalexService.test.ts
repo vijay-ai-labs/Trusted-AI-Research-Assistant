@@ -225,4 +225,22 @@ describe('searchOpenAlex fallback', () => {
     expect(result.items).toHaveLength(1)
     vi.unstubAllGlobals()
   })
+
+  it('sanitizes wildcards like ? and * from the query', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ results: [baseWork] }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    
+    await searchOpenAlex('What is retrieval augmented generation??**')
+    
+    expect(fetchMock).toHaveBeenCalled()
+    const callUrl = fetchMock.mock.calls[0][0] as string
+    expect(callUrl).toContain('q=What%20is%20retrieval%20augmented%20generation')
+    expect(callUrl).not.toContain('%3F') // ?
+    expect(callUrl).not.toContain('%2A') // *
+    
+    vi.unstubAllGlobals()
+  })
 })

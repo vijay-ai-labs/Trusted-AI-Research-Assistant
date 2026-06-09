@@ -50,69 +50,83 @@ export interface OpenAlexSearchResult {
 }
 
 export function reconstructAbstract(invertedIndex: Record<string, number[]> | null | undefined): string {
-  if (!invertedIndex || Object.keys(invertedIndex).length === 0) return ''
+  if (!invertedIndex || typeof invertedIndex !== 'object' || Object.keys(invertedIndex).length === 0) return ''
 
-  const allPositions = Object.values(invertedIndex).flat()
-  if (allPositions.length === 0) return ''
+  try {
+    const allPositions = Object.values(invertedIndex).flat()
+    if (allPositions.length === 0) return ''
 
-  const maxPos = Math.max(...allPositions)
-  const words: string[] = new Array(maxPos + 1).fill('')
+    const maxPos = Math.max(...allPositions)
+    if (isNaN(maxPos) || maxPos < 0 || maxPos > 100000) return ''
+    const words: string[] = new Array(maxPos + 1).fill('')
 
-  for (const [word, positions] of Object.entries(invertedIndex)) {
-    for (const pos of positions) {
-      words[pos] = word
+    for (const [word, positions] of Object.entries(invertedIndex)) {
+      if (!Array.isArray(positions)) continue
+      for (const pos of positions) {
+        if (typeof pos === 'number' && pos >= 0 && pos <= maxPos) {
+          words[pos] = word
+        }
+      }
     }
-  }
 
-  return words.join(' ').trim()
+    return words.join(' ').trim()
+  } catch {
+    return ''
+  }
 }
 
 export function filterWorks(works: OpenAlexWork[]): OpenAlexWork[] {
+  if (!Array.isArray(works)) return []
   return works.filter((work) => {
+    if (!work) return false
     if (work.is_retracted) return false
-    if (!work.display_name?.trim()) return false
+    if (typeof work.display_name !== 'string' || !work.display_name.trim()) return false
     return true
   })
 }
 
 export function mapWorkToResearchItem(work: OpenAlexWork): ResearchItem {
-  const shortId = work.id.split('/').pop() ?? work.id
+  const shortId = typeof work?.id === 'string' ? (work.id.split('/').pop() ?? work.id) : 'unknown'
 
-  const abstract = reconstructAbstract(work.abstract_inverted_index)
+  const abstract = reconstructAbstract(work?.abstract_inverted_index)
 
-  const authors = work.authorships
-    .slice(0, 5)
-    .map((a) => a.author.display_name)
-    .filter(Boolean)
+  const authors = Array.isArray(work?.authorships)
+    ? work.authorships
+        .slice(0, 5)
+        .map((a) => a?.author?.display_name)
+        .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+    : []
 
   const domainTags = [
-    ...(work.topics ?? []).slice(0, 2).map((t) => t.display_name),
-    ...(work.keywords ?? []).slice(0, 2).map((k) => k.display_name),
-  ].slice(0, 3)
+    ...(Array.isArray(work?.topics) ? work.topics : []).slice(0, 2).map((t) => t?.display_name),
+    ...(Array.isArray(work?.keywords) ? work.keywords : []).slice(0, 2).map((k) => k?.display_name),
+  ]
+    .filter((tag): tag is string => typeof tag === 'string' && tag.trim().length > 0)
+    .slice(0, 3)
 
-  const sourceName = work.primary_location?.source?.display_name ?? 'OpenAlex'
+  const sourceName = work?.primary_location?.source?.display_name ?? 'OpenAlex'
 
-  const rawDoi = work.doi ? work.doi.replace(/^https?:\/\/doi\.org\//, '') : null
+  const rawDoi = typeof work?.doi === 'string' ? work.doi.replace(/^https?:\/\/doi\.org\//, '') : null
 
   const url =
-    work.open_access?.oa_url ??
+    work?.open_access?.oa_url ??
     (rawDoi ? `https://doi.org/${rawDoi}` : null) ??
     `https://openalex.org/${shortId}`
 
   return {
     id: `oa-${shortId}`,
-    title: work.display_name ?? '',
+    title: work?.display_name ?? 'Untitled Paper',
     sourceType: 'paper',
     sourceName,
     url,
-    year: work.publication_year ?? 0,
+    year: typeof work?.publication_year === 'number' ? work.publication_year : 0,
     authors: authors.length ? authors : ['Unknown'],
     domainTags: domainTags.length ? domainTags : ['academic'],
     abstractOrClaim: abstract || 'Abstract not available.',
-    citationCount: work.cited_by_count ?? 0,
-    peerReviewed: work.type === 'article' || work.type === 'review',
+    citationCount: typeof work?.cited_by_count === 'number' ? work.cited_by_count : 0,
+    peerReviewed: work?.type === 'article' || work?.type === 'review',
     verifiedByHuman: false,
-    retracted: work.is_retracted ?? false,
+    retracted: !!work?.is_retracted,
     region: 'global',
     trustNotes: 'Source-backed via OpenAlex. High-confidence metadata. Needs independent verification for claims.',
     doi: rawDoi ?? undefined,
@@ -143,8 +157,8 @@ async function searchViaProxy(query: string): Promise<OpenAlexSearchResult | nul
   }
 }
 
-// LOCAL DEV ONLY — direct OpenAlex call when proxy is unreachable.
-// Never runs in production.
+// Direct OpenAlex call — used when proxy is unreachable.
+// OpenAlex returns Access-Control-Allow-Origin: * so browser calls work.
 async function searchOpenAlexDirect(query: string, apiKey?: string): Promise<OpenAlexSearchResult> {
   const params = new URLSearchParams({
     search: query,
@@ -193,15 +207,16 @@ async function searchOpenAlexDirect(query: string, apiKey?: string): Promise<Ope
 }
 
 export async function searchOpenAlex(query: string, apiKey?: string): Promise<OpenAlexSearchResult> {
-  // Step 1: Try backend proxy
-  const proxyResult = await searchViaProxy(query)
-  if (proxyResult !== null) return proxyResult
-
-  // Step 2: LOCAL DEV ONLY fallback — direct OpenAlex call when proxy unreachable.
-  // This path should never execute in production.
-  if (import.meta.env.DEV) {
-    return searchOpenAlexDirect(query, apiKey)
+  const cleanQuery = query.replace(/[\?\*]/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!cleanQuery) {
+    return { items: [], status: 'empty' }
   }
 
-  return { items: [], status: 'failed', error: 'proxy-unavailable' }
+  // Step 1: Try backend proxy
+  const proxyResult = await searchViaProxy(cleanQuery)
+  if (proxyResult !== null) return proxyResult
+
+  // Step 2: Direct fallback when proxy unreachable.
+  // OpenAlex is a public CORS-enabled API; no key required for basic access.
+  return searchOpenAlexDirect(cleanQuery, apiKey)
 }

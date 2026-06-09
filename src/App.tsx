@@ -369,6 +369,7 @@ function App() {
   const [filters, setFilters] = useState<ResearchFilters>(defaultFilters)
   const [openAlexItems, setOpenAlexItems] = useState<ResearchItem[]>([])
   const [openAlexStatus, setOpenAlexStatus] = useState<OpenAlexStatus>('idle')
+  const [openAlexError, setOpenAlexError] = useState<string | null>(null)
   const [synthesisResult, setSynthesisResult] = useState<SynthesisResult | null>(null)
   const [synthesisStatus, setSynthesisStatus] = useState<SynthesisStatus>('idle')
   const [showSynthesisExport, setShowSynthesisExport] = useState(false)
@@ -396,7 +397,7 @@ function App() {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
   const [followupText, setFollowupText] = useState('')
   const [followupLoading, setFollowupLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'chat' | 'matrix' | 'timeline'>('chat')
+  const [activeTab, setActiveTab] = useState<'chat' | 'matrix' | 'timeline' | 'sources'>('chat')
   const [notebookContent, setNotebookContent] = useState(() => {
     return localStorage.getItem('researcher_notebook_content') || ''
   })
@@ -637,7 +638,7 @@ function App() {
 
       const truncated = truncateForAnalysis(extracted.text)
       const { analyzePDFText, enrichWithOpenAlex, buildResearchItem } = await getPdfAnalysisService()
-      const analysis = await analyzePDFText(truncated, '')
+      const analysis = await analyzePDFText(truncated, import.meta.env.VITE_OPENAI_API_KEY || '')
 
       setState({ status: 'enriching', statusMessage: 'Enriching metadata via OpenAlex…', analysis })
 
@@ -678,11 +679,13 @@ function App() {
     }
     setOpenAlexItems([]) // Immediately clear previous results
     setOpenAlexStatus('loading')
+    setOpenAlexError(null)
     let cancelled = false
-    searchOpenAlex(query).then((result) => {
+    searchOpenAlex(query, import.meta.env.VITE_OPENALEX_API_KEY || undefined).then((result) => {
       if (cancelled) return
       setOpenAlexItems(result.items)
       setOpenAlexStatus(result.status)
+      setOpenAlexError(result.error ?? null)
     })
     return () => { cancelled = true }
   }, [query, restoredSession])
@@ -813,7 +816,7 @@ function App() {
         if (abortController.signal.aborted) return
         // Stream failed — fall back to one-shot synthesis
         setIsStreaming(false)
-        synthesizeAnswer(query, results, undefined, undefined, false, agentMode).then((result) => {
+        synthesizeAnswer(query, results, import.meta.env.VITE_OPENAI_API_KEY || undefined, undefined, false, agentMode).then((result) => {
           if (abortController.signal.aborted) return
           setSynthesisResult(result)
           
@@ -1302,7 +1305,7 @@ function App() {
 
           {openAlexStatus === 'failed' && (
             <div className="openalex-warning" role="alert">
-              Live OpenAlex search unavailable. Showing local seed evidence only.
+              Live OpenAlex search unavailable. Showing local seed evidence only.{openAlexError ? ` (${openAlexError})` : ''}
             </div>
           )}
           {openAlexStatus === 'loading' && (
@@ -1338,7 +1341,7 @@ function App() {
                 onCitationClick={handleCitationClick}
               />
             ) : (
-              <div className="unified-panel">
+              <div className={`unified-panel unified-panel--active-tab-${activeTab}`}>
                 <section className="synthesis-col" aria-label="source-backed answer">
                   {agentMode === 'ai-search' ? (
                     <div className="synthesis-col-body">
@@ -1388,6 +1391,15 @@ function App() {
                           >
                             <Clock size={15} />
                             <span>Citation Timeline</span>
+                          </button>
+                          <button
+                            role="tab"
+                            aria-selected={activeTab === 'sources'}
+                            className={`synthesis-tab-btn mobile-only-tab ${activeTab === 'sources' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('sources')}
+                          >
+                            <BookOpen size={15} />
+                            <span>Sources ({results.length})</span>
                           </button>
                         </div>
                       )}

@@ -16,8 +16,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const q = typeof req.query['q'] === 'string' ? req.query['q'].trim() : ''
   if (!q) { res.status(400).json({ error: 'q query parameter is required' }); return }
 
+  const cleanQ = q.replace(/[\?\*]/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!cleanQ) { res.json({ results: [] }); return }
+
   const params = new URLSearchParams({
-    search: q,
+    search: cleanQ,
     per_page: '15',
     filter: 'is_retracted:false,has_abstract:true',
     sort: 'relevance_score:desc',

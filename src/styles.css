@@ -1180,23 +1180,84 @@ legend {
   font-weight: 600;
 }
 
+.synthesis-tab-btn.mobile-only-tab {
+  display: none !important;
+}
+
 @media (max-width: 960px) {
+  .synthesis-tab-btn.mobile-only-tab {
+    display: inline-flex !important;
+  }
+
+  .synthesis-tabs {
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    scrollbar-width: none !important;
+    padding: 0 12px !important;
+  }
+  
+  .synthesis-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+
   .unified-panel {
-    flex-direction: column;
-    height: auto;
-    min-height: 0;
+    flex-direction: column !important;
+    height: calc(100vh - 124px) !important;
+    min-height: 480px !important;
+    max-height: none !important;
+    overflow: hidden !important;
   }
-  .synthesis-col {
-    flex: none;
-    height: auto;
+  
+  /* Active tab: Sources tab (hide synthesis dossier, show sources) */
+  .unified-panel--active-tab-sources .synthesis-col {
+    display: none !important;
   }
-  .sources-col {
-    flex: none;
-    max-width: none;
-    min-width: 0;
-    border-left: none;
-    border-top: 1px solid var(--border-color);
-    max-height: 340px;
+  .unified-panel--active-tab-sources .sources-col {
+    display: flex !important;
+    flex: 1 !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    border-left: none !important;
+    border-top: none !important;
+    max-height: none !important;
+    height: 100% !important;
+  }
+  
+  /* Active tab: Synthesis dossier/matrix/timeline (show synthesis, hide sources) */
+  .unified-panel:not(.unified-panel--active-tab-sources) .sources-col {
+    display: none !important;
+  }
+  .unified-panel:not(.unified-panel--active-tab-sources) .synthesis-col {
+    display: flex !important;
+    flex: 1 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .synthesis-col-body {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    padding: 16px 16px 12px !important;
+  }
+
+  .synthesis-col-body .chat-container {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    min-height: 0 !important;
+    padding-bottom: 80px !important; /* space for followup bar */
+  }
+
+  .chat-pdf-workspace {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 280px 1fr !important;
+    height: calc(100vh - 124px) !important;
+    min-height: 480px !important;
+    gap: 12px !important;
   }
 }
 

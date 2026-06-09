@@ -588,8 +588,14 @@ openalexRouter.get('/search', async (req: Request, res: Response): Promise<void>
     return
   }
 
+  const cleanQ = q.replace(/[\?\*]/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!cleanQ) {
+    res.json({ results: [] })
+    return
+  }
+
   const params = new URLSearchParams({
-    search: q,
+    search: cleanQ,
     per_page: '15',
     filter: 'is_retracted:false,has_abstract:true',
     sort: 'relevance_score:desc',
@@ -676,10 +682,18 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`[server] Backend proxy running on http://localhost:${PORT}`)
   console.log(`[server] OpenAI configured: ${Boolean(OPENAI_API_KEY)}`)
   console.log(`[server] OpenAlex configured: ${Boolean(OPENALEX_API_KEY)}`)
+})
+
+server.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[server] Port ${PORT} already in use. Kill the process holding it and retry.`)
+    process.exit(1)
+  }
+  throw err
 })
 
 export { app }
