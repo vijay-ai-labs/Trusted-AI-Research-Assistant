@@ -586,11 +586,13 @@ p {
 .search-typewriter {
   position: absolute;
   left: 0;
+  right: 0;
   color: var(--text-muted);
   font-size: 1rem;
   pointer-events: none;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
   z-index: 0;
 }
 
